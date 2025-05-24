@@ -124,7 +124,7 @@ To ignore specific posts (by ID or slug):
 
 ## Keyboard Shortcuts
 
-- **Ctrl+S** (or **Cmd+S** on Mac): Save settings from any tab
+- **CTRL+S** (or **CMD+S** on Mac): Save settings from any tab
 
 ## Performance Considerations
 
@@ -216,6 +216,4 @@ This plugin automatically modifies your content to add internal links. While it'
 
 ---
 
-**Download**: [Latest Release](https://github.com/jmoorewv/smart-internal-links/releases)
-**Issues**: [Report a Bug](https://github.com/jmoorewv/smart-internal-links/issues)
-**Website**: [jmoorewv.com](https://jmoorewv.com)
+**Download**: [Latest Release](https://github.com/jmoorewv/smart-internal-links/releases) | **Issues**: [Report a Bug](https://github.com/jmoorewv/smart-internal-links/issues) | **Website**: [jmoorewv.com](https://jmoorewv.com)

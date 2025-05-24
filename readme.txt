@@ -126,7 +126,7 @@ To ignore specific posts ( by ID or slug ):
 
 == Keyboard Shortcuts ==
 
-* **Ctrl+S** ( or **Cmd+S** on Mac ): Save settings from any tab
+* **CTRL+S** ( or **CMD+S** on Mac ): Save settings from any tab
 
 == Performance Considerations ==
 
