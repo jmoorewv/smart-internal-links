@@ -133,49 +133,31 @@ class Smart_Links_Content_Processor {
         }
 
         // Handle caption shortcodes
-        if ( ! empty( $this->options['excludefigcaption'] ) ) {
-            // Save caption shortcodes to prevent processing their contents
-            $caption_pattern = '/\[caption.*?\](.*?)\[\/caption\]/s';
-            $text = preg_replace_callback( $caption_pattern,
-                function( $matches ) {
-                    // Extract the image link part from the caption content
-                    $content = $matches[1];
-                    $img_pattern = '/(<a[^>]*>.*?<\/a>)(.*)/s';
-
-                    if ( preg_match( $img_pattern, $content, $img_matches ) ) {
-                        // First part is the image link, second part is the caption text
-                        $img_link = $img_matches[1];
-                        $caption_text = $img_matches[2];
-
-                        // Special encode the caption text to prevent linkification
-                        $encoded_text = insertspecialchars( $caption_text );
-
-                        // Return the shortcode with protected caption text
-                        return '[caption' . strstr( $matches[0], ']', true ) . ']'
-                            . $img_link . $encoded_text . '[/caption]';
-                    }
-
-                    // If we couldn't parse it properly, return as is
-                    return $matches[0];
-                },
-                $text
-            );
-        }
-
-        $figcaptions = [];
-        $figcaption_count = 0;
+        $captions = [];
+        $caption_count = 0;
 
         if ( ! empty( $this->options['excludefigcaption'] ) ) {
-            $text = preg_replace_callback( '%(<figcaption[^>]*>)(.*?)(</figcaption>)%si',
-                function( $matches ) use ( &$figcaptions, &$figcaption_count ) {
-                    $placeholder = "<!--FIGCAPTION_PLACEHOLDER_" . $figcaption_count . "-->";
-                    $figcaptions[$figcaption_count] = $matches[0]; // Store the complete figcaption
-                    $figcaption_count++;
+            // Store caption shortcodes and remove existing links from caption text
+            $text = preg_replace_callback( '/(\[caption[^\]]*\](?:<a[^>]*>)?<img[^>]*>(?:<\/a>)?)(\s+[^[]*?)(\[\/caption\])/s',
+                function( $matches ) use ( &$captions, &$caption_count ) {
+                    $placeholder = "<!--CAPTION_PLACEHOLDER_" . $caption_count . "-->";
+                    $caption_part = $matches[1];
+                    $text_part = $matches[2];
+                    $closing_part = $matches[3];
+
+                    // Remove any existing links from the caption text
+                    $clean_text = preg_replace( '/<a[^>]*>(.*?)<\/a>/i', '$1', $text_part );
+
+                    // Store the complete caption with protected and cleaned text
+                    $captions[$caption_count] = $caption_part . insertspecialchars( $clean_text ) . $closing_part;
+                    $caption_count++;
                     return $placeholder;
                 },
                 $text
             );
         }
+
+        $figures = [];
 
         // Prepare regexes based on case sensitivity
         $reg_post = empty( $this->options['casesens'] ) ?
@@ -417,41 +399,21 @@ class Smart_Links_Content_Processor {
         }
 
         // Restore caption shortcode text
-        if ( ! empty( $this->options['excludefigcaption'] ) ) {
-            // Find caption shortcodes and restore their original text
-            $caption_pattern = '/\[caption.*?\](.*?)\[\/caption\]/s';
-            $text = preg_replace_callback( $caption_pattern,
-                function( $matches ) {
-                    // Extract the content
-                    $content = $matches[1];
-                    $img_pattern = '/(<a[^>]*>.*?<\/a>)(.*)/s';
-
-                    if ( preg_match( $img_pattern, $content, $img_matches ) ) {
-                        // First part is the image link, second part is the caption text
-                        $img_link = $img_matches[1];
-                        $caption_text = $img_matches[2];
-
-                        // Decode the special characters in the caption text
-                        $decoded_text = removespecialchars( $caption_text );
-
-                        // Return the shortcode with restored caption text
-                        return '[caption' . strstr( $matches[0], ']', true ) . ']'
-                               . $img_link . $decoded_text . '[/caption]';
-                    }
-
-                    // If we couldn't parse it properly, return as is
-                    return $matches[0];
-                },
-                $text
-            );
-        }
-
-        // Add new condition for figcaptions
-        if ( ! empty( $this->options['excludefigcaption'] ) ) {
-            // Here insert special characters for figcaptions
-            $text = preg_replace_callback( '%(<figcaption[^>]*>)(.*?)(</figcaption>)%si', function( $matches ) {
-                return $matches[1] . removespecialchars( $matches[2] ) . $matches[3];
-            }, $text );
+        if ( ! empty( $this->options['excludefigcaption'] ) && ! empty( $captions ) ) {
+            for ( $i = 0; $i < $caption_count; $i++ ) {
+                $placeholder = "<!--CAPTION_PLACEHOLDER_" . $i . "-->";
+                if ( strpos( $text, $placeholder ) !== false ) {
+                    // Restore the caption and remove special characters from caption text
+                    $restored_caption = preg_replace_callback(
+                        '/(\[caption[^\]]*\](?:<a[^>]*>)?<img[^>]*>(?:<\/a>)?)(\s+[^[]*?)(\[\/caption\])/s',
+                        function( $matches ) {
+                            return $matches[1] . removespecialchars( $matches[2] ) . $matches[3];
+                        },
+                        $captions[$i]
+                    );
+                    $text = str_replace( $placeholder, $restored_caption, $text );
+                }
+            }
         }
 
         // Only call stripslashes once if either option is enabled
@@ -459,10 +421,21 @@ class Smart_Links_Content_Processor {
             $text = stripslashes( $text );
         }
 
-        // Restore all figcaptions
-        if ( ! empty( $this->options['excludefigcaption'] ) && ! empty( $figcaptions ) ) {
-            for ( $i = 0; $i < $figcaption_count; $i++ ) {
-                $text = str_replace( "<!--FIGCAPTION_PLACEHOLDER_" . $i . "-->", $figcaptions[$i], $text );
+        // Restore captions with their protected content
+        if ( ! empty( $this->options['excludefigcaption'] ) && ! empty( $captions ) ) {
+            for ( $i = 0; $i < $caption_count; $i++ ) {
+                $placeholder = "<!--CAPTION_PLACEHOLDER_" . $i . "-->";
+                if ( strpos( $text, $placeholder ) !== false ) {
+                    // Restore the caption and remove special characters from caption text
+                    $restored_caption = preg_replace_callback(
+                        '/(\[caption[^\]]*\](?:<a[^>]*>)?<img[^>]*>(?:<\/a>)?)(\s+[^[]*?)(\[\/caption\])/s',
+                        function( $matches ) {
+                            return $matches[1] . removespecialchars( $matches[2] ) . $matches[3];
+                        },
+                        $captions[$i]
+                    );
+                    $text = str_replace( $placeholder, $restored_caption, $text );
+                }
             }
         }
 
