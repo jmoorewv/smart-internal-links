@@ -213,6 +213,20 @@ Starting with version 3.0.0, all your custom keywords, link limits, exclusion ru
 
 == Changelog ==
 
+= 3.0.1 - CRITICAL FIXES =
+* **CRITICAL**: Fixed fatal errors with td-composer/page builder themes causing null content processing
+* **CRITICAL**: Fixed caption shortcode handling preventing critical errors when "Prevent linking in figure captions" enabled
+* **CRITICAL**: Fixed alt text being linked inside caption shortcodes when caption protection enabled
+* **CRITICAL**: Fixed content not loading when Posts content type enabled with complex page builder themes
+* Complete rewrite of content processor for enhanced page builder compatibility
+* Added robust caption protection using placeholder system instead of complex regex patterns
+* Enhanced HTML attribute protection ( alt text, title attributes ) from automatic linking
+* Improved processing order: captions protected before attribute processing to prevent conflicts
+* Added chunked post processing for better performance with large content libraries
+* Better error handling with comprehensive try/catch blocks around database operations
+* Enhanced null content handling throughout processing pipeline
+* Page builder content ( [vc_], [tdb_], [tdc_] shortcodes ) now properly skipped during processing
+
 = 3.0.0 - BREAKING CHANGES =
 **⚠️ Manual migration required from SEO Internal Links 2.x**
 
