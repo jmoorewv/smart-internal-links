@@ -156,13 +156,39 @@ class Smart_Links_Core {
      * @param string $content
      * @return string
      */
-    public function process_content( string $content ): string {
-        $processor = new Smart_Links_Content_Processor( $this->options );
-        $content = $processor->process_text( $content, false );
-        $content = $this->apply_external_link_attributes( $content );
-        $content = $this->clean_links( $content );
+    public function process_content( $content ) {
+        // Handle null, empty, or non-string content
+        if ( $content === null || $content === false || $content === '' ) {
+            return (string) $content;
+        }
 
-        return $content;
+        // Ensure we have a string
+        if ( ! is_string( $content ) ) {
+            $content = (string) $content;
+        }
+
+        // Skip processing if content is just whitespace
+        if ( trim( $content ) === '' ) {
+            return $content;
+        }
+
+        try {
+            $processor = new Smart_Links_Content_Processor( $this->options );
+            $processed_content = $processor->process_text( $content, false );
+
+            // If processing failed, return original content
+            if ( $processed_content === null || $processed_content === false ) {
+                return $content;
+            }
+
+            $processed_content = $this->apply_external_link_attributes( $processed_content );
+            $processed_content = $this->clean_links( $processed_content );
+
+            return $processed_content;
+        } catch ( Exception $e ) {
+            // If any error occurs, return original content
+            return $content;
+        }
     }
 
     /**
@@ -171,13 +197,39 @@ class Smart_Links_Core {
      * @param string $content
      * @return string
      */
-    public function process_comments( string $content ): string {
-        $processor = new Smart_Links_Content_Processor( $this->options );
-        $content = $processor->process_text( $content, true );
-        $content = $this->apply_external_link_attributes( $content );
-        $content = $this->clean_links( $content );
+    public function process_comments( $content ) {
+        // Handle null, empty, or non-string content
+        if ( $content === null || $content === false || $content === '' ) {
+            return (string) $content;
+        }
 
-        return $content;
+        // Ensure we have a string
+        if ( ! is_string( $content ) ) {
+            $content = (string) $content;
+        }
+
+        // Skip processing if content is just whitespace
+        if ( trim( $content ) === '' ) {
+            return $content;
+        }
+
+        try {
+            $processor = new Smart_Links_Content_Processor( $this->options );
+            $processed_content = $processor->process_text( $content, true );
+
+            // If processing failed, return original content
+            if ( $processed_content === null || $processed_content === false ) {
+                return $content;
+            }
+
+            $processed_content = $this->apply_external_link_attributes( $processed_content );
+            $processed_content = $this->clean_links( $processed_content );
+
+            return $processed_content;
+        } catch ( Exception $e ) {
+            // If any error occurs, return original content
+            return $content;
+        }
     }
 
     /**

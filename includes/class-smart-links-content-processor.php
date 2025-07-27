@@ -51,391 +51,308 @@ class Smart_Links_Content_Processor {
     /**
      * Process text content for automatic linking
      *
-     * @param string $text The content to process
+     * @param mixed $text The content to process
      * @param bool $is_comment Whether this is comment text
      * @return string Processed content
      */
-    public function process_text( string $text, bool $is_comment ): string {
+    public function process_text( $text, bool $is_comment ): string {
+        // Ultra-defensive input handling
+        if ( $text === null || $text === false ) {
+            return '';
+        }
+        
+        if ( ! is_string( $text ) && ! is_numeric( $text ) ) {
+            return '';
+        }
+        
+        $text = (string) $text;
+        
+        if ( $text === '' || strlen( $text ) === 0 ) {
+            return $text;
+        }
+
+        // Skip processing if we're in admin or doing AJAX
+        if ( is_admin() || ( defined( 'DOING_AJAX' ) && DOING_AJAX ) ) {
+            return $text;
+        }
+
+        // Skip if this appears to be page builder content
+        if ( strpos( $text, '[vc_' ) !== false || strpos( $text, '[tdb_' ) !== false || strpos( $text, '[tdc_' ) !== false ) {
+            return $text;
+        }
+
         global $wpdb, $post;
 
+        // Basic setup
         $links = 0;
+        $maxlinks = isset( $this->options['maxlinks'] ) && intval( $this->options['maxlinks'] ) > 0 ? intval( $this->options['maxlinks'] ) : 3;
+        $maxsingle = isset( $this->options['maxsingle'] ) && intval( $this->options['maxsingle'] ) > 0 ? intval( $this->options['maxsingle'] ) : 1;
 
-        // First check if this is a feed
-        if ( is_feed() ) {
-            // If we should process feeds, continue processing
-            // If not, return the text unprocessed
-            if ( empty( $this->options['allowfeed'] ) ) {
-                return $text;
-            }
-        }
-        // If not a feed, check for single posts/pages option
-        else if ( ! empty( $this->options['onlysingle'] ) && ! ( is_single() || is_page() ) ) {
+        // Simple feed check
+        if ( is_feed() && empty( $this->options['allowfeed'] ) ) {
             return $text;
         }
 
-        // Check for ignored posts
-        $ignore_post_array = [];
-        if ( ! empty( $this->options['ignorepost'] ) ) {
-            $ignore_post_array = $this->explode_trim( "|", $this->options['ignorepost'] );
-        }
-
-        if ( is_page( $ignore_post_array ) || is_single( $ignore_post_array ) ) {
+        // Simple single post check
+        if ( ! empty( $this->options['onlysingle'] ) && ! ( is_single() || is_page() ) ) {
             return $text;
         }
 
-        // Set up variables to prevent self-linking
-        $current_post_id = isset( $post->ID ) ? $post->ID : 0;
-        $current_post_url = $current_post_id ? trailingslashit( get_permalink( $current_post_id ) ) : '';
-        $current_post_title = '';
-
-        if ( isset( $post->post_title ) ) {
-            $current_post_title = empty( $this->options['casesens'] ) ?
-                strtolower( $post->post_title ) : $post->post_title;
-        }
-
-        // For non-comments, check post/page specific conditions
-        if ( ! $is_comment && isset( $post ) ) {
+        // Check post type permissions
+        if ( ! $is_comment && isset( $post ) && is_object( $post ) ) {
             if ( $post->post_type == 'post' && empty( $this->options['post'] ) ) {
                 return $text;
             }
-
             if ( $post->post_type == 'page' && empty( $this->options['page'] ) ) {
                 return $text;
             }
         }
 
-        // Set up processing variables
-        $maxlinks = isset( $this->options['maxlinks'] ) && intval( $this->options['maxlinks'] ) > 0 ?
-            intval( $this->options['maxlinks'] ) : 0;
-
-        $maxsingle = isset( $this->options['maxsingle'] ) && intval( $this->options['maxsingle'] ) > 0 ?
-            intval( $this->options['maxsingle'] ) : -1;
-
-        $maxsingleurl = isset( $this->options['maxsingleurl'] ) && intval( $this->options['maxsingleurl'] ) > 0 ?
-            intval( $this->options['maxsingleurl'] ) : 0;
-
-        $minusage = isset( $this->options['minusage'] ) && intval( $this->options['minusage'] ) > 0 ?
-            intval( $this->options['minusage'] ) : 1;
-
-        $urls = [];
+        // Get ignore list
         $arrignore = [];
-
         if ( ! empty( $this->options['ignore'] ) ) {
-            $arrignore = $this->explode_trim( "|", $this->options['ignore'] );
+            $ignore_parts = explode( '|', $this->options['ignore'] );
+            foreach ( $ignore_parts as $part ) {
+                $trimmed = trim( $part );
+                if ( ! empty( $trimmed ) ) {
+                    $arrignore[] = $trimmed;
+                }
+            }
         }
 
-        // Process exclude heading
+        // Simple case sensitivity setup
+        $strpos_fnc = empty( $this->options['casesens'] ) ? 'stripos' : 'strpos';
+        
+        // Add spaces for word boundary detection
+        $text = " $text ";
+
+        // Process heading exclusions safely
         if ( ! empty( $this->options['excludeheading'] ) ) {
-            // Here insert special characters for headings
-            $text = preg_replace_callback( '%(<h.*?>)(.*?)(</h.*?>)%si', function( $matches ) {
-                return $matches[1] . insertspecialchars( $matches[2] ) . $matches[3];
-            }, $text );
-        }
-
-        // Handle caption shortcodes
-        $captions = [];
-        $caption_count = 0;
-
-        if ( ! empty( $this->options['excludefigcaption'] ) ) {
-            // Store caption shortcodes and remove existing links from caption text
-            $text = preg_replace_callback( '/(\[caption[^\]]*\](?:<a[^>]*>)?<img[^>]*>(?:<\/a>)?)(\s+[^[]*?)(\[\/caption\])/s',
-                function( $matches ) use ( &$captions, &$caption_count ) {
-                    $placeholder = "<!--CAPTION_PLACEHOLDER_" . $caption_count . "-->";
-                    $caption_part = $matches[1];
-                    $text_part = $matches[2];
-                    $closing_part = $matches[3];
-
-                    // Remove any existing links from the caption text
-                    $clean_text = preg_replace( '/<a[^>]*>(.*?)<\/a>/i', '$1', $text_part );
-
-                    // Store the complete caption with protected and cleaned text
-                    $captions[$caption_count] = $caption_part . insertspecialchars( $clean_text ) . $closing_part;
-                    $caption_count++;
-                    return $placeholder;
-                },
-                $text
+            $text = preg_replace_callback( 
+                '/(<h[1-6][^>]*>)(.*?)(<\/h[1-6]>)/i', 
+                function( $matches ) {
+                    return $matches[1] . '<!--HEADING_PROTECTED-->' . $matches[2] . '<!--/HEADING_PROTECTED-->' . $matches[3];
+                }, 
+                $text 
             );
         }
 
-        $figures = [];
-
-        // Prepare regexes based on case sensitivity
-        $reg_post = empty( $this->options['casesens'] ) ?
-            '/(?!(?:[^<\[]+[>\]]|[^>\]]+<\/a>))($name)/imsU' :
-            '/(?!(?:[^<\[]+[>\]]|[^>\]]+<\/a>))($name)/msU';
-
-        $reg = empty( $this->options['casesens'] ) ?
-            '/(?!(?:[^<\[]+[>\]]|[^>\]]+<\/a>))\b($name)\b/imsU' :
-            '/(?!(?:[^<\[]+[>\]]|[^>\]]+<\/a>))\b($name)\b/msU';
-
-        $strpos_fnc = empty( $this->options['casesens'] ) ? 'stripos' : 'strpos';
-        $text = " $text ";
-
-        // Process posts and pages
-        if ( ! empty( $this->options['lposts'] ) || ! empty( $this->options['lpages'] ) ) {
-
-            if ( ! $posts = wp_cache_get( 'smart-links-posts', 'smart-internal-links' ) ) {
-                $query = "SELECT post_title, ID, post_type FROM $wpdb->posts WHERE post_status = '%s' AND LENGTH(post_title) > 3 ORDER BY LENGTH(post_title) DESC";
-                $query = $wpdb->prepare( $query, 'publish' );
-                $posts = $wpdb->get_results( $query );
-
-                wp_cache_add( 'smart-links-posts', $posts, 'smart-internal-links', 86400 );
-            }
-
-            $current_id = isset( $post->ID ) ? $post->ID : 0;
-
-            foreach ( $posts as $postitem ) {
-                // Skip if we've reached max links
-                if ( $maxlinks > 0 && $links >= $maxlinks ) {
-                    break;
-                }
-
-                // Skip if post type doesn't match enabled settings
-                $process_post = false;
-                if ( $postitem->post_type == 'post' && ! empty( $this->options['lposts'] ) ) {
-                    $process_post = true;
-                }
-                if ( $postitem->post_type == 'page' && ! empty( $this->options['lpages'] ) ) {
-                    $process_post = true;
-                }
-
-                if ( ! $process_post ) {
-                    continue;
-                }
-
-                // Skip if title is in ignore list
-                $post_title = empty( $this->options['casesens'] ) ?
-                    strtolower( $postitem->post_title ) : $postitem->post_title;
-
-                if ( in_array( $post_title, $arrignore ) ) {
-                    continue;
-                }
-
-                // Check for self-link
-                if ( $postitem->ID == $current_id ) {
-                    // Skip if self-links aren't allowed for this post type
-                    if ( ! $this->allow_self_links( $postitem->post_type ) ) {
-                        continue;
-                    }
-                }
-
-                $text = str_replace( "&amp;", "&", $text );
-
-                if ( $strpos_fnc( $text, $postitem->post_title ) !== false ) {
-                    $name = preg_quote( $postitem->post_title, '/' );
-                    $regexp = str_replace( '$name', $name, $reg );
-                    $replace = '<a title="$1" href="$$$url$$$">$1</a>';
-                    $newtext = preg_replace( $regexp, $replace, $text, $maxsingle );
-
-                    if ( $newtext != $text ) {
-                        $url = get_permalink( $postitem->ID );
-                        $links++;
-                        $text = str_replace( '$$$url$$$', trim( $url ), $newtext );
-                    }
-                }
-            }
+        // Process caption exclusions safely - BEFORE any other attribute protection
+        $caption_placeholders = [];
+        $caption_counter = 0;
+        if ( ! empty( $this->options['excludefigcaption'] ) ) {
+            // Replace ALL content inside caption shortcodes with placeholders
+            $text = preg_replace_callback( 
+                '/(\[caption[^\]]*\])(.*?)(\[\/caption\])/s', 
+                function( $matches ) use ( &$caption_placeholders, &$caption_counter ) {
+                    $placeholder = '<!--CAPTION_PLACEHOLDER_' . $caption_counter . '-->';
+                    // Store entire caption with ALL its original content protected
+                    $caption_placeholders[$caption_counter] = $matches[0];
+                    $caption_counter++;
+                    return $placeholder;
+                }, 
+                $text 
+            );
         }
 
-        // Process categories
-        if ( ! empty( $this->options['lcats'] ) ) {
-            if ( ! $categories = wp_cache_get( 'smart-links-categories', 'smart-internal-links' ) ) {
-                $query = "SELECT $wpdb->terms.name, $wpdb->terms.term_id FROM $wpdb->terms
-                          LEFT JOIN $wpdb->term_taxonomy ON $wpdb->terms.term_id = $wpdb->term_taxonomy.term_id
-                          WHERE $wpdb->term_taxonomy.taxonomy = '%s'
-                          AND LENGTH($wpdb->terms.name) > 3
-                          AND $wpdb->term_taxonomy.count >= %d
-                          ORDER BY LENGTH($wpdb->terms.name) DESC";
+        // Protect HTML attributes (alt text, title text, etc.) from linking - AFTER caption protection
+        $attribute_placeholders = [];
+        $attribute_counter = 0;
+        $text = preg_replace_callback(
+            '/(alt|title|data-[^=]*)\s*=\s*["\']([^"\']*)["\']/',
+            function( $matches ) use ( &$attribute_placeholders, &$attribute_counter ) {
+                $placeholder = '<!--ATTR_PLACEHOLDER_' . $attribute_counter . '-->';
+                $attribute_placeholders[$attribute_counter] = $matches[0];
+                $attribute_counter++;
+                return $placeholder;
+            },
+            $text
+        );
 
-                $query = $wpdb->prepare( $query, 'category', $minusage );
-                $categories = $wpdb->get_results( $query );
-
-                wp_cache_add( 'smart-links-categories', $categories, 'smart-internal-links', 86400 );
-            }
-
-            foreach ( $categories as $cat ) {
-                // Skip if we've reached max links
-                if ( $maxlinks > 0 && $links >= $maxlinks ) {
-                    break;
-                }
-
-                $cat_name = empty( $this->options['casesens'] ) ?
-                    strtolower( $cat->name ) : $cat->name;
-
-                // Skip if in ignore list
-                if ( in_array( $cat_name, $arrignore ) ) {
-                    continue;
-                }
-
-                if ( $strpos_fnc( $text, $cat->name ) !== false ) {
-                    $name = preg_quote( $cat->name, '/' );
-                    $regexp = str_replace( '$name', $name, $reg );
-                    $replace = '<a title="$1" href="$$$url$$$">$1</a>';
-                    $newtext = preg_replace( $regexp, $replace, $text, $maxsingle );
-
-                    if ( $newtext != $text ) {
-                        $url = get_category_link( $cat->term_id );
-                        $links++;
-                        $text = str_replace( '$$$url$$$', trim( $url ), $newtext );
-                    }
-                }
-            }
-        }
-
-        // Process tags
-        if ( ! empty( $this->options['ltags'] ) ) {
-            if ( ! $tags = wp_cache_get( 'smart-links-tags', 'smart-internal-links' ) ) {
-                $query = "SELECT $wpdb->terms.name, $wpdb->terms.term_id FROM $wpdb->terms
-                          LEFT JOIN $wpdb->term_taxonomy ON $wpdb->terms.term_id = $wpdb->term_taxonomy.term_id
-                          WHERE $wpdb->term_taxonomy.taxonomy = '%s'
-                          AND LENGTH($wpdb->terms.name) > 3
-                          AND $wpdb->term_taxonomy.count >= %d
-                          ORDER BY LENGTH($wpdb->terms.name) DESC";
-
-                $query = $wpdb->prepare( $query, 'post_tag', $minusage );
-                $tags = $wpdb->get_results( $query );
-
-                wp_cache_add( 'smart-links-tags', $tags, 'smart-internal-links', 86400 );
-            }
-
-            foreach ( $tags as $tag ) {
-                // Skip if we've reached max links
-                if ( $maxlinks > 0 && $links >= $maxlinks ) {
-                    break;
-                }
-
-                $tag_name = empty( $this->options['casesens'] ) ?
-                    strtolower( $tag->name ) : $tag->name;
-
-                // Skip if in ignore list
-                if ( in_array( $tag_name, $arrignore ) ) {
-                    continue;
-                }
-
-                if ( $strpos_fnc( $text, $tag->name ) !== false ) {
-                    $name = preg_quote( $tag->name, '/' );
-                    $regexp = str_replace( '$name', $name, $reg );
-                    $replace = '<a title="$1" href="$$$url$$$">$1</a>';
-                    $newtext = preg_replace( $regexp, $replace, $text, $maxsingle );
-
-                    if ( $newtext != $text ) {
-                        $url = get_tag_link( $tag->term_id );
-                        $links++;
-                        $text = str_replace( '$$$url$$$', trim( $url ), $newtext );
-                    }
-                }
-            }
-        }
-
-        // Process custom keywords
+        // Process custom keywords first (safest and most important)
         if ( ! empty( $this->options['customkey'] ) ) {
             $kw_array = [];
-
-            // Process custom keywords from settings
-            foreach ( explode( "\n", $this->options['customkey'] ) as $line ) {
+            
+            $lines = explode( "\n", $this->options['customkey'] );
+            foreach ( $lines as $line ) {
                 $line = trim( $line );
-
                 if ( empty( $line ) ) {
                     continue;
                 }
-
-                $chunks = array_map( 'trim', explode( "|", $line ) );
-                $chunks_count = count( $chunks );
-
-                // Skip invalid lines
-                if ( $chunks_count < 2 ) {
+                
+                $parts = explode( '|', $line );
+                if ( count( $parts ) < 2 ) {
                     continue;
                 }
-
-                // The last chunk is always the URL
-                $url = trim( $chunks[$chunks_count - 1] );
-
-                // All previous chunks are keywords
-                for ( $i = 0; $i < $chunks_count - 1; $i++ ) {
-                    $keyword = trim( $chunks[$i] );
-                    if ( ! empty( $keyword ) ) {
+                
+                $url = trim( array_pop( $parts ) );
+                
+                foreach ( $parts as $keyword ) {
+                    $keyword = trim( $keyword );
+                    if ( ! empty( $keyword ) && ! in_array( strtolower( $keyword ), array_map( 'strtolower', $arrignore ) ) ) {
                         $kw_array[$keyword] = $url;
                     }
                 }
             }
 
-            foreach ( $kw_array as $name => $url ) {
-                // Skip if we've reached max links
+            foreach ( $kw_array as $keyword => $url ) {
                 if ( $maxlinks > 0 && $links >= $maxlinks ) {
                     break;
                 }
 
-                // Check if this is a self-link ( targeting the current post )
-                if ( isset( $post ) && is_object( $post ) ) {
-                    $current_url = trailingslashit( get_permalink( $post->ID ) );
-                    $check_url = trailingslashit( trim( $url ) );
+                if ( $strpos_fnc( $text, $keyword ) !== false ) {
+                    // Skip if keyword is in protected heading
+                    if ( strpos( $text, '<!--HEADING_PROTECTED-->' . $keyword . '<!--/HEADING_PROTECTED-->' ) !== false ) {
+                        continue;
+                    }
+                    
+                    // Simple word boundary replacement
+                    $pattern = empty( $this->options['casesens'] ) 
+                        ? '/\b' . preg_quote( $keyword, '/' ) . '\b/i'
+                        : '/\b' . preg_quote( $keyword, '/' ) . '\b/';
+                    
+                    $replacement = '<a href="' . esc_url( $url ) . '">$0</a>';
+                    
+                    $newtext = preg_replace( $pattern, $replacement, $text, $maxsingle );
+                    
+                    if ( $newtext && $newtext !== $text ) {
+                        $text = $newtext;
+                        $links++;
+                    }
+                }
+            }
+        }
 
-                    if ( trim( $check_url ) == trim( $current_url ) ) {
-                        // This is a self-link, check if they're allowed
-                        if ( ! $this->allow_self_links( $post->post_type ) ) {
-                            continue; // Skip if self-links aren't allowed
+        if ( ( ! empty( $this->options['lposts'] ) || ! empty( $this->options['lpages'] ) ) && $links < $maxlinks ) {
+            // Process posts in chunks to handle large content libraries
+            $posts = wp_cache_get( 'smart-links-posts-full', 'smart-internal-links' );
+            
+            if ( ! $posts ) {
+                try {
+                    // Get all published posts, no date restrictions
+                    $query = $wpdb->prepare( 
+                        "SELECT post_title, ID, post_type FROM $wpdb->posts 
+                        WHERE post_status = %s 
+                        AND LENGTH(post_title) > 3 
+                        ORDER BY LENGTH(post_title) DESC",
+                        'publish'
+                    );
+                    $posts = $wpdb->get_results( $query );
+                    
+                    if ( ! is_array( $posts ) ) {
+                        $posts = [];
+                    }
+                    
+                    // Cache for 24 hours
+                    wp_cache_add( 'smart-links-posts-full', $posts, 'smart-internal-links', 86400 );
+                } catch ( Exception $e ) {
+                    $posts = [];
+                }
+            }
+
+            $current_id = isset( $post->ID ) ? $post->ID : 0;
+
+            if ( is_array( $posts ) && ! empty( $posts ) ) {
+                // Process posts in chunks to avoid memory issues
+                $chunk_size = 100;
+                $processed_count = 0;
+                
+                for ( $chunk_start = 0; $chunk_start < count( $posts ); $chunk_start += $chunk_size ) {
+                    $chunk = array_slice( $posts, $chunk_start, $chunk_size );
+                    
+                    foreach ( $chunk as $postitem ) {
+                        if ( ! is_object( $postitem ) || ! isset( $postitem->post_title, $postitem->ID, $postitem->post_type ) ) {
+                            continue;
+                        }
+
+                        if ( $maxlinks > 0 && $links >= $maxlinks ) {
+                            break 2; // Break out of both loops
+                        }
+
+                        // Check if we should process this post type
+                        $process_post = false;
+                        if ( $postitem->post_type == 'post' && ! empty( $this->options['lposts'] ) ) {
+                            $process_post = true;
+                        }
+                        if ( $postitem->post_type == 'page' && ! empty( $this->options['lpages'] ) ) {
+                            $process_post = true;
+                        }
+
+                        if ( ! $process_post ) {
+                            continue;
+                        }
+
+                        // Skip self-links unless explicitly allowed
+                        if ( $postitem->ID == $current_id ) {
+                            $allow_self = false;
+                            if ( $postitem->post_type == 'post' && ! empty( $this->options['postself'] ) ) {
+                                $allow_self = true;
+                            }
+                            if ( $postitem->post_type == 'page' && ! empty( $this->options['pageself'] ) ) {
+                                $allow_self = true;
+                            }
+                            if ( ! $allow_self ) {
+                                continue;
+                            }
+                        }
+
+                        // Skip if title is in ignore list
+                        $post_title_check = empty( $this->options['casesens'] ) 
+                            ? strtolower( $postitem->post_title ) 
+                            : $postitem->post_title;
+
+                        if ( in_array( $post_title_check, array_map( 'strtolower', $arrignore ) ) ) {
+                            continue;
+                        }
+
+                        if ( $strpos_fnc( $text, $postitem->post_title ) !== false ) {
+                            // Skip if title is in protected heading
+                            if ( strpos( $text, '<!--HEADING_PROTECTED-->' . $postitem->post_title . '<!--/HEADING_PROTECTED-->' ) !== false ) {
+                                continue;
+                            }
+                            
+                            $pattern = empty( $this->options['casesens'] ) 
+                                ? '/(?!(?:[^<\[]+[>\]]|[^>\]]+<\/a>))\b' . preg_quote( $postitem->post_title, '/' ) . '\b/i'
+                                : '/(?!(?:[^<\[]+[>\]]|[^>\]]+<\/a>))\b' . preg_quote( $postitem->post_title, '/' ) . '\b/';
+                            
+                            $url = get_permalink( $postitem->ID );
+                            if ( ! $url ) {
+                                continue;
+                            }
+                            
+                            $replacement = '<a title="' . esc_attr( $postitem->post_title ) . '" href="' . esc_url( $url ) . '">$0</a>';
+                            
+                            $newtext = preg_replace( $pattern, $replacement, $text, $maxsingle );
+                            
+                            if ( $newtext && $newtext !== $text ) {
+                                $text = $newtext;
+                                $links++;
+                                $processed_count++;
+                            }
                         }
                     }
                 }
-
-                if ( $strpos_fnc( $text, $name ) !== false ) {
-                    $name = preg_quote( $name, '/' );
-                    $regexp = str_replace( '$name', $name, $reg );
-                    $replace = "<a title=\"$1\" href=\"" . trim( $url ) . "\">$1</a>";
-                    $newtext = preg_replace( $regexp, $replace, $text, $maxsingle );
-
-                    if ( $newtext != $text ) {
-                        $links++;
-                        $text = $newtext;
-                    }
-                }
             }
         }
 
-        // Cleanup heading exclusions
+        // Clean up heading protection and restore content in correct order
         if ( ! empty( $this->options['excludeheading'] ) ) {
-            $text = preg_replace_callback( '%(<h.*?>)(.*?)(</h.*?>)%si', function( $matches ) {
-                return $matches[1] . removespecialchars( $matches[2] ) . $matches[3];
-            }, $text );
+            $text = str_replace( ['<!--HEADING_PROTECTED-->', '<!--/HEADING_PROTECTED-->'], '', $text );
         }
-
-        // Restore caption shortcode text
-        if ( ! empty( $this->options['excludefigcaption'] ) && ! empty( $captions ) ) {
-            for ( $i = 0; $i < $caption_count; $i++ ) {
-                $placeholder = "<!--CAPTION_PLACEHOLDER_" . $i . "-->";
-                if ( strpos( $text, $placeholder ) !== false ) {
-                    // Restore the caption and remove special characters from caption text
-                    $restored_caption = preg_replace_callback(
-                        '/(\[caption[^\]]*\](?:<a[^>]*>)?<img[^>]*>(?:<\/a>)?)(\s+[^[]*?)(\[\/caption\])/s',
-                        function( $matches ) {
-                            return $matches[1] . removespecialchars( $matches[2] ) . $matches[3];
-                        },
-                        $captions[$i]
-                    );
-                    $text = str_replace( $placeholder, $restored_caption, $text );
-                }
+        
+        // Restore HTML attributes first (for content outside captions)
+        if ( ! empty( $attribute_placeholders ) ) {
+            for ( $i = 0; $i < $attribute_counter; $i++ ) {
+                $placeholder = '<!--ATTR_PLACEHOLDER_' . $i . '-->';
+                $text = str_replace( $placeholder, $attribute_placeholders[$i], $text );
             }
         }
-
-        // Only call stripslashes once if either option is enabled
-        if ( ! empty( $this->options['excludeheading'] ) || ! empty( $this->options['excludefigcaption'] ) ) {
-            $text = stripslashes( $text );
-        }
-
-        // Restore captions with their protected content
-        if ( ! empty( $this->options['excludefigcaption'] ) && ! empty( $captions ) ) {
-            for ( $i = 0; $i < $caption_count; $i++ ) {
-                $placeholder = "<!--CAPTION_PLACEHOLDER_" . $i . "-->";
-                if ( strpos( $text, $placeholder ) !== false ) {
-                    // Restore the caption and remove special characters from caption text
-                    $restored_caption = preg_replace_callback(
-                        '/(\[caption[^\]]*\](?:<a[^>]*>)?<img[^>]*>(?:<\/a>)?)(\s+[^[]*?)(\[\/caption\])/s',
-                        function( $matches ) {
-                            return $matches[1] . removespecialchars( $matches[2] ) . $matches[3];
-                        },
-                        $captions[$i]
-                    );
-                    $text = str_replace( $placeholder, $restored_caption, $text );
-                }
+        
+        // Restore captions LAST - they contain their original attributes untouched
+        if ( ! empty( $this->options['excludefigcaption'] ) && ! empty( $caption_placeholders ) ) {
+            for ( $i = 0; $i < $caption_counter; $i++ ) {
+                $placeholder = '<!--CAPTION_PLACEHOLDER_' . $i . '-->';
+                $text = str_replace( $placeholder, $caption_placeholders[$i], $text );
             }
         }
 

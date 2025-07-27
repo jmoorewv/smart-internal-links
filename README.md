@@ -156,6 +156,37 @@ To ignore specific posts (by ID or slug):
 
 ## Changelog
 
+## [3.0.1] - 2025-07-26
+
+### Fixed
+
+- **CRITICAL**: Fixed fatal errors with td-composer/page builder themes causing null content processing
+- **CRITICAL**: Fixed caption shortcode handling preventing critical errors when "Prevent linking in figure captions" enabled
+- **CRITICAL**: Fixed alt text being linked inside caption shortcodes when caption protection enabled
+- **CRITICAL**: Fixed content not loading when Posts content type enabled with complex page builder themes
+- Rewritten content processor with enhanced error handling and page builder compatibility
+- Added robust caption protection using placeholder system instead of complex regex patterns
+- Enhanced HTML attribute protection (alt text, title attributes, data attributes) from automatic linking
+- Improved processing order: captions protected before attribute processing to prevent conflicts
+- Added chunked post processing for better performance with large content libraries
+- Better error handling with try/catch blocks around database operations
+- Enhanced null content handling throughout processing pipeline
+- Fixed settings preservation during plugin updates (carried over from 3.0.0 improvements)
+
+### Changed
+
+- Improved content processor architecture for better theme compatibility
+- Enhanced caption protection mechanism for more reliable exclusion
+- Optimized processing order for better performance and reliability
+- Page builder content (`[vc_`, `[tdb_`, `[tdc_` shortcodes) now properly skipped during processing
+
+### Technical
+
+- Complete rewrite of caption handling to prevent PHP 8 compatibility issues
+- Enhanced WordPress shortcode compatibility using proper parsing methods
+- Improved regex patterns for better reliability and performance
+- Added comprehensive input validation and type checking throughout
+
 ### Version 3.0.0 - BREAKING CHANGES
 
 **⚠️ Manual migration required from SEO Internal Links 2.x**
