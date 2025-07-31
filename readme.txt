@@ -213,6 +213,9 @@ Starting with version 3.0.0, all your custom keywords, link limits, exclusion ru
 
 == Changelog ==
 
+= 3.0.2 - CRITICAL BUG FIX =
+* **CRITICAL**: Fixed auto-linking inside existing link tags that broke HTML structure
+
 = 3.0.1 - CRITICAL FIXES =
 * **CRITICAL**: Fixed fatal errors with td-composer/page builder themes causing null content processing
 * **CRITICAL**: Fixed caption shortcode handling preventing critical errors when "Prevent linking in figure captions" enabled

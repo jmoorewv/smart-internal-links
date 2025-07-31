@@ -156,6 +156,10 @@ To ignore specific posts (by ID or slug):
 
 ## Changelog
 
+## [3.0.2] - CRITICAL BUG FIX
+
+- **CRITICAL**: Fixed auto-linking inside existing link tags that broke HTML structure
+
 ## [3.0.1] - 2025-07-26
 
 ### Fixed
