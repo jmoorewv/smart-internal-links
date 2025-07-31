@@ -7,15 +7,15 @@ Smart Internal Links is a complete rewrite of the original SEO Internal Links pl
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [3.0.2] - 2025-07-31
+### Version 3.0.2 - 2025-07-31
 
-### Fixed
+#### Fixed
 
 - **CRITICAL**: Fixed auto-linking inside existing link tags that broke HTML structure
 
-## [3.0.1] - 2025-07-26
+### Version 3.0.1 - 2025-07-26
 
-### Fixed
+#### Fixed
 
 - **CRITICAL**: Fixed fatal errors with td-composer/page builder themes causing null content processing
 - **CRITICAL**: Fixed caption shortcode handling preventing critical errors when "Prevent linking in figure captions" enabled
@@ -30,23 +30,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enhanced null content handling throughout processing pipeline
 - Fixed settings preservation during plugin updates (carried over from 3.0.0 improvements)
 
-### Changed
+#### Changed
 
 - Improved content processor architecture for better theme compatibility
 - Enhanced caption protection mechanism for more reliable exclusion
 - Optimized processing order for better performance and reliability
 - Page builder content (`[vc_`, `[tdb_`, `[tdc_` shortcodes) now properly skipped during processing
 
-### Technical
+#### Technical
 
 - Complete rewrite of caption handling to prevent PHP 8 compatibility issues
 - Enhanced WordPress shortcode compatibility using proper parsing methods
 - Improved regex patterns for better reliability and performance
 - Added comprehensive input validation and type checking throughout
 
-## [3.0.0] - 2025-05-22
+### Version 3.0.0 - 2025-05-22
 
-### Added
+#### Added
 
 - Modern tabbed admin interface with toggle switches
 - Keyboard shortcuts (Ctrl+S / Cmd+S to save)
@@ -59,7 +59,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Better external link detection and handling
 - **Complete rewrite from scratch** to address 9+ years of technical debt from original SEO Internal Links plugin
 
-### Changed
+#### Changed
 
 - **BREAKING**: Custom keywords now use pipe (`|`) separator instead of comma
 - **BREAKING**: Minimum PHP version requirement increased to 7.4
@@ -73,7 +73,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enhanced settings sanitization to merge with existing values
 - Better handling of checkbox fields and boolean values during updates
 
-### Fixed
+#### Fixed
 
 - **CRITICAL**: Fixed fatal errors from deprecated `/e` modifier causing PHP 7.0+ crashes
 - **CRITICAL**: Fixed numerous PHP 8.x compatibility issues inherited from 9+ year old codebase
@@ -90,14 +90,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed memory leaks from inefficient string operations inherited from original plugin
 - Resolved inconsistent nonce verification
 
-### Removed
+#### Removed
 
 - Deprecated PHP 5.x compatibility
 - Hardcoded database query limits
 - Inline CSS and JavaScript (now properly enqueued)
 - Legacy procedural code structure
 
-### Security
+#### Security
 
 - Added proper capability checks for admin functions
 - Implemented secure nonce handling for all forms
@@ -105,9 +105,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added output escaping to prevent XSS attacks
 - Parameterized all database queries to prevent SQL injection
 
-## [2.3.1] - 2016-02-03
+### Version 2.3.1 - 2016-02-03
 
-### Initial Legacy Version (Original SEO Internal Links by Pankaj Jha)
+- Initial Legacy Version (Original SEO Internal Links by Pankaj Jha)
 
 ---
 

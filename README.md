@@ -156,13 +156,15 @@ To ignore specific posts (by ID or slug):
 
 ## Changelog
 
-## [3.0.2] - CRITICAL BUG FIX
+### Version 3.0.2
+
+#### Fixed
 
 - **CRITICAL**: Fixed auto-linking inside existing link tags that broke HTML structure
 
-## [3.0.1] - 2025-07-26
+### Version 3.0.1
 
-### Fixed
+#### Fixed
 
 - **CRITICAL**: Fixed fatal errors with td-composer/page builder themes causing null content processing
 - **CRITICAL**: Fixed caption shortcode handling preventing critical errors when "Prevent linking in figure captions" enabled
@@ -177,14 +179,14 @@ To ignore specific posts (by ID or slug):
 - Enhanced null content handling throughout processing pipeline
 - Fixed settings preservation during plugin updates (carried over from 3.0.0 improvements)
 
-### Changed
+#### Changed
 
 - Improved content processor architecture for better theme compatibility
 - Enhanced caption protection mechanism for more reliable exclusion
 - Optimized processing order for better performance and reliability
 - Page builder content (`[vc_`, `[tdb_`, `[tdc_` shortcodes) now properly skipped during processing
 
-### Technical
+#### Technical
 
 - Complete rewrite of caption handling to prevent PHP 8 compatibility issues
 - Enhanced WordPress shortcode compatibility using proper parsing methods
