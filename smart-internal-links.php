@@ -3,7 +3,7 @@
  * Plugin Name:     Smart Internal Links
  * Plugin URI:      https://jmoorewv.com
  * Description:     Smart Internal Links provides automatic SEO internal links for your site, keyword lists, nofollow and much more.
- * Version:         3.0.2
+ * Version:         3.0.3
  * Author:          Jonathan Moore
  * Author URI:      https://jmoorewv.com
  * License:         GNU General Public License, v2 (or newer)
@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Define plugin constants
-define( 'SMART_LINKS_VERSION', '3.0.2' );
+define( 'SMART_LINKS_VERSION', '3.0.3' );
 define( 'SMART_LINKS_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SMART_LINKS_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'SMART_LINKS_PLUGIN_FILE', __FILE__ );

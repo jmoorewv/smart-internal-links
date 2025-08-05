@@ -213,10 +213,17 @@ Starting with version 3.0.0, all your custom keywords, link limits, exclusion ru
 
 == Changelog ==
 
+= 3.0.3 - CRITICAL LIMIT FIX =
+
+* **CRITICAL**: Fixed Max Links per Post = 0 not being treated as unlimited
+* **CRITICAL**: Fixed Max Single = 0 not being treated as unlimited
+
 = 3.0.2 - CRITICAL BUG FIX =
+
 * **CRITICAL**: Fixed auto-linking inside existing link tags that broke HTML structure
 
 = 3.0.1 - CRITICAL FIXES =
+
 * **CRITICAL**: Fixed fatal errors with td-composer/page builder themes causing null content processing
 * **CRITICAL**: Fixed caption shortcode handling preventing critical errors when "Prevent linking in figure captions" enabled
 * **CRITICAL**: Fixed alt text being linked inside caption shortcodes when caption protection enabled
@@ -231,6 +238,7 @@ Starting with version 3.0.0, all your custom keywords, link limits, exclusion ru
 * Page builder content ( [vc_], [tdb_], [tdc_] shortcodes ) now properly skipped during processing
 
 = 3.0.0 - BREAKING CHANGES =
+
 **⚠️ Manual migration required from SEO Internal Links 2.x**
 
 * Complete rewrite with modern PHP 7.4+ / 8.x compatibility
@@ -256,6 +264,7 @@ Starting with version 3.0.0, all your custom keywords, link limits, exclusion ru
 * Changed installation process no longer overwrites existing settings
 
 = 2.3.1 ( SEO Internal Links ) =
+
 * Legacy version with basic functionality by Pankaj Jha
 * Simple admin interface
 * Custom keywords with comma separators
@@ -264,6 +273,7 @@ Starting with version 3.0.0, all your custom keywords, link limits, exclusion ru
 == Upgrade Notice ==
 
 = 3.0.0 =
+
 **BREAKING CHANGES**: Major rewrite with PHP 8.x compatibility and enhanced security. This is a complete rewrite of the original SEO Internal Links plugin. Custom keywords format changed from comma to pipe separators. Manual migration required from SEO Internal Links 2.x - backup recommended before upgrading. See MIGRATION.md for detailed upgrade instructions.
 
 == Support ==

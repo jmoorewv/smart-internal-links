@@ -156,6 +156,13 @@ To ignore specific posts (by ID or slug):
 
 ## Changelog
 
+### Version 3.0.3
+
+#### Fixed
+
+- **CRITICAL**: Fixed Max Links per Post = 0 not being treated as unlimited
+- **CRITICAL**: Fixed Max Single = 0 not being treated as unlimited
+
 ### Version 3.0.2
 
 #### Fixed
