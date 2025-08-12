@@ -56,7 +56,7 @@ class Smart_Links_Content_Processor {
      * @return string Processed content
      */
     public function process_text( $text, bool $is_comment ): string {
-        // Ultra-defensive input handling
+        // Ensure we have a valid text input
         if ( $text === null || $text === false ) {
             return '';
         }
@@ -91,7 +91,7 @@ class Smart_Links_Content_Processor {
 
         // FIX: Properly handle 0 as unlimited for maxsingle
         $maxsingle = isset( $this->options['maxsingle'] ) ? intval( $this->options['maxsingle'] ) : 1;
-        // If maxsingle is 0, set to unlimited (high number)
+        // If maxsingle is 0, set to unlimited ( high number )
         if ( $maxsingle === 0 ) {
             $maxsingle = PHP_INT_MAX;
         }
@@ -148,12 +148,17 @@ class Smart_Links_Content_Processor {
             $text
         );
 
-        // Process heading exclusions safely
+        // FIXED: Process heading exclusions with proper protection
+        $heading_placeholders = [];
+        $heading_counter = 0;
         if ( ! empty( $this->options['excludeheading'] ) ) {
             $text = preg_replace_callback(
                 '/(<h[1-6][^>]*>)(.*?)(<\/h[1-6]>)/i',
-                function( $matches ) {
-                    return $matches[1] . '<!--HEADING_PROTECTED-->' . $matches[2] . '<!--/HEADING_PROTECTED-->' . $matches[3];
+                function( $matches ) use ( &$heading_placeholders, &$heading_counter ) {
+                    $placeholder = '<!--HEADING_PLACEHOLDER_' . $heading_counter . '-->';
+                    $heading_placeholders[$heading_counter] = $matches[0];
+                    $heading_counter++;
+                    return $placeholder;
                 },
                 $text
             );
@@ -177,7 +182,7 @@ class Smart_Links_Content_Processor {
             );
         }
 
-        // Protect HTML attributes (alt text, title text, etc.) from linking - AFTER caption protection
+        // Protect HTML attributes ( alt text, title text, etc. ) from linking - AFTER caption protection
         $attribute_placeholders = [];
         $attribute_counter = 0;
         $text = preg_replace_callback(
@@ -191,7 +196,7 @@ class Smart_Links_Content_Processor {
             $text
         );
 
-        // Process custom keywords first (safest and most important)
+        // Process custom keywords first ( safest and most important )
         if ( ! empty( $this->options['customkey'] ) ) {
             $kw_array = [];
 
@@ -218,17 +223,12 @@ class Smart_Links_Content_Processor {
             }
 
             foreach ( $kw_array as $keyword => $url ) {
-                // FIX: Only check maxlinks if it's greater than 0 (0 means unlimited)
+                // FIX: Only check maxlinks if it's greater than 0 ( 0 means unlimited )
                 if ( $maxlinks > 0 && $links >= $maxlinks ) {
                     break;
                 }
 
                 if ( $strpos_fnc( $text, $keyword ) !== false ) {
-                    // Skip if keyword is in protected heading
-                    if ( strpos( $text, '<!--HEADING_PROTECTED-->' . $keyword . '<!--/HEADING_PROTECTED-->' ) !== false ) {
-                        continue;
-                    }
-
                     // Simple word boundary replacement
                     $pattern = empty( $this->options['casesens'] )
                         ? '/\b' . preg_quote( $keyword, '/' ) . '\b/i'
@@ -246,7 +246,7 @@ class Smart_Links_Content_Processor {
             }
         }
 
-        // FIX: Only process posts if we haven't hit maxlinks (when maxlinks > 0)
+        // FIX: Only process posts if we haven't hit maxlinks ( when maxlinks > 0 )
         if ( ( ! empty( $this->options['lposts'] ) || ! empty( $this->options['lpages'] ) ) && ( $maxlinks === 0 || $links < $maxlinks ) ) {
             // Process posts in chunks to handle large content libraries
             $posts = wp_cache_get( 'smart-links-posts-full', 'smart-internal-links' );
@@ -289,7 +289,7 @@ class Smart_Links_Content_Processor {
                             continue;
                         }
 
-                        // FIX: Only check maxlinks if it's greater than 0 (0 means unlimited)
+                        // FIX: Only check maxlinks if it's greater than 0 ( 0 means unlimited )
                         if ( $maxlinks > 0 && $links >= $maxlinks ) {
                             break 2; // Break out of both loops
                         }
@@ -331,11 +331,6 @@ class Smart_Links_Content_Processor {
                         }
 
                         if ( $strpos_fnc( $text, $postitem->post_title ) !== false ) {
-                            // Skip if title is in protected heading
-                            if ( strpos( $text, '<!--HEADING_PROTECTED-->' . $postitem->post_title . '<!--/HEADING_PROTECTED-->' ) !== false ) {
-                                continue;
-                            }
-
                             $pattern = empty( $this->options['casesens'] )
                                 ? '/(?!(?:[^<\[]+[>\]]|[^>\]]+<\/a>))\b' . preg_quote( $postitem->post_title, '/' ) . '\b/i'
                                 : '/(?!(?:[^<\[]+[>\]]|[^>\]]+<\/a>))\b' . preg_quote( $postitem->post_title, '/' ) . '\b/';
@@ -360,12 +355,7 @@ class Smart_Links_Content_Processor {
             }
         }
 
-        // Clean up heading protection and restore content in correct order
-        if ( ! empty( $this->options['excludeheading'] ) ) {
-            $text = str_replace( ['<!--HEADING_PROTECTED-->', '<!--/HEADING_PROTECTED-->'], '', $text );
-        }
-
-        // Restore HTML attributes first (for content outside captions)
+        // Restore HTML attributes first ( for content outside captions and headings )
         if ( ! empty( $attribute_placeholders ) ) {
             for ( $i = 0; $i < $attribute_counter; $i++ ) {
                 $placeholder = '<!--ATTR_PLACEHOLDER_' . $i . '-->';
@@ -373,7 +363,7 @@ class Smart_Links_Content_Processor {
             }
         }
 
-        // Restore captions LAST - they contain their original attributes untouched
+        // Restore captions ( they contain their original attributes untouched )
         if ( ! empty( $this->options['excludefigcaption'] ) && ! empty( $caption_placeholders ) ) {
             for ( $i = 0; $i < $caption_counter; $i++ ) {
                 $placeholder = '<!--CAPTION_PLACEHOLDER_' . $i . '-->';
@@ -381,7 +371,15 @@ class Smart_Links_Content_Processor {
             }
         }
 
-        // CRITICAL: Restore existing links LAST (after all other processing)
+        // FIXED: Restore headings ( they were completely protected from linking )
+        if ( ! empty( $this->options['excludeheading'] ) && ! empty( $heading_placeholders ) ) {
+            for ( $i = 0; $i < $heading_counter; $i++ ) {
+                $placeholder = '<!--HEADING_PLACEHOLDER_' . $i . '-->';
+                $text = str_replace( $placeholder, $heading_placeholders[$i], $text );
+            }
+        }
+
+        // CRITICAL: Restore existing links LAST ( after all other processing )
         if ( ! empty( $link_placeholders ) ) {
             for ( $i = 0; $i < $link_counter; $i++ ) {
                 $placeholder = '<!--LINK_PLACEHOLDER_' . $i . '-->';

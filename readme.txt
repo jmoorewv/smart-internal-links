@@ -5,7 +5,7 @@ Tags: seo, internal links, automatic linking, content optimization, link buildin
 Requires at least: 5.0
 Tested up to: 6.4
 Requires PHP: 7.4
-Stable tag: 3.0.0
+Stable tag: 3.0.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -213,29 +213,25 @@ Starting with version 3.0.0, all your custom keywords, link limits, exclusion ru
 
 == Changelog ==
 
-= 3.0.3 - CRITICAL LIMIT FIX =
+= 3.0.4 - HEADING FIX =
 
-* **CRITICAL**: Fixed Max Links per Post = 0 not being treated as unlimited
-* **CRITICAL**: Fixed Max Single = 0 not being treated as unlimited
+* Fixed "Prevent linking in heading tags (h1-h6)" setting not working properly
 
-= 3.0.2 - CRITICAL BUG FIX =
+= 3.0.3 - LIMIT FIX =
 
-* **CRITICAL**: Fixed auto-linking inside existing link tags that broke HTML structure
+* Fixed Max Links per Post = 0 not being treated as unlimited
+* Fixed Max Single = 0 not being treated as unlimited
+
+= 3.0.2 - BUG FIX =
+
+* Fixed auto-linking inside existing link tags that broke HTML structure
 
 = 3.0.1 - CRITICAL FIXES =
 
-* **CRITICAL**: Fixed fatal errors with td-composer/page builder themes causing null content processing
-* **CRITICAL**: Fixed caption shortcode handling preventing critical errors when "Prevent linking in figure captions" enabled
-* **CRITICAL**: Fixed alt text being linked inside caption shortcodes when caption protection enabled
-* **CRITICAL**: Fixed content not loading when Posts content type enabled with complex page builder themes
-* Complete rewrite of content processor for enhanced page builder compatibility
-* Added robust caption protection using placeholder system instead of complex regex patterns
-* Enhanced HTML attribute protection ( alt text, title attributes ) from automatic linking
-* Improved processing order: captions protected before attribute processing to prevent conflicts
-* Added chunked post processing for better performance with large content libraries
-* Better error handling with comprehensive try/catch blocks around database operations
-* Enhanced null content handling throughout processing pipeline
-* Page builder content ( [vc_], [tdb_], [tdc_] shortcodes ) now properly skipped during processing
+* Fixed fatal errors with td-composer/page builder themes causing null content processing
+* Fixed caption shortcode handling preventing critical errors when "Prevent linking in figure captions" enabled
+* Fixed alt text being linked inside caption shortcodes when caption protection enabled
+* Fixed content not loading when Posts content type enabled with complex page builder themes
 
 = 3.0.0 - BREAKING CHANGES =
 

@@ -7,35 +7,33 @@ Smart Internal Links is a complete rewrite of the original SEO Internal Links pl
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+### Version 3.0.4 - 2025-08-12
+
+#### Fixed
+
+- Fixed "Prevent linking in heading tags (h1-h6)" setting not working properly
+
 ### Version 3.0.3 - 2025-08-04
 
 #### Fixed
 
-- **CRITICAL**: Fixed Max Links per Post = 0 not being treated as unlimited
-- **CRITICAL**: Fixed Max Single = 0 not being treated as unlimited
+- Fixed Max Links per Post = 0 not being treated as unlimited
+- Fixed Max Single = 0 not being treated as unlimited
 
 ### Version 3.0.2 - 2025-07-31
 
 #### Fixed
 
-- **CRITICAL**: Fixed auto-linking inside existing link tags that broke HTML structure
+- Fixed auto-linking inside existing link tags that broke HTML structure
 
 ### Version 3.0.1 - 2025-07-26
 
 #### Fixed
 
-- **CRITICAL**: Fixed fatal errors with td-composer/page builder themes causing null content processing
-- **CRITICAL**: Fixed caption shortcode handling preventing critical errors when "Prevent linking in figure captions" enabled
-- **CRITICAL**: Fixed alt text being linked inside caption shortcodes when caption protection enabled
-- **CRITICAL**: Fixed content not loading when Posts content type enabled with complex page builder themes
-- Rewritten content processor with enhanced error handling and page builder compatibility
-- Added robust caption protection using placeholder system instead of complex regex patterns
-- Enhanced HTML attribute protection (alt text, title attributes, data attributes) from automatic linking
-- Improved processing order: captions protected before attribute processing to prevent conflicts
-- Added chunked post processing for better performance with large content libraries
-- Better error handling with try/catch blocks around database operations
-- Enhanced null content handling throughout processing pipeline
-- Fixed settings preservation during plugin updates (carried over from 3.0.0 improvements)
+- Fixed fatal errors with td-composer/page builder themes causing null content processing
+- Fixed caption shortcode handling preventing critical errors when "Prevent linking in figure captions" enabled
+- Fixed alt text being linked inside caption shortcodes when caption protection enabled
+- Fixed content not loading when Posts content type enabled with complex page builder themes
 
 #### Changed
 
